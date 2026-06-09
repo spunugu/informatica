@@ -23,22 +23,36 @@ from datetime import datetime
 # ─── Mock pipeline state helpers ──────────────────────────────────────────────
 
 def _init_pipeline():
+    defaults = {
+        "mr_id":          None,
+        "mr_url":         None,
+        "mr_title":       None,
+        "mr_status":      None,
+        "mr_assignee":    None,
+        "mr_reviewer":    None,
+        "mr_branch":      None,
+        "mr_target":      None,
+        "mr_repo":        None,
+        "jenkins_build":  None,
+        "jenkins_status": None,
+        "jenkins_url":    None,
+        "jenkins_env":    None,
+        "gcs_deployed":   False,
+        "gcs_paths":      [],
+        "gcs_sql_full":   None,
+        "gcs_dag_full":   None,
+        "git_merged":     False,
+        "auto_merge":     True,
+        "deploy_log":     [],
+        "current_step":   0,
+    }
     if "pipeline" not in st.session_state:
-        st.session_state.pipeline = {
-            "mr_id":          None,
-            "mr_url":         None,
-            "mr_title":       None,
-            "mr_status":      None,   # open, approved, merged
-            "mr_assignee":    None,
-            "mr_reviewer":    None,
-            "jenkins_build":  None,
-            "jenkins_status": None,   # pending, running, success, failed
-            "jenkins_url":    None,
-            "gcs_deployed":   False,
-            "git_merged":     False,
-            "deploy_log":     [],
-            "current_step":   0,      # 0=idle,1=mr,2=review,3=approve,4=jenkins,5=gcs,6=merged
-        }
+        st.session_state.pipeline = defaults.copy()
+    else:
+        # Ensure all keys exist even if pipeline was partially initialized
+        for k, v in defaults.items():
+            if k not in st.session_state.pipeline:
+                st.session_state.pipeline[k] = v
 
 
 def _log(message: str, level: str = "INFO"):
@@ -606,6 +620,123 @@ def _render_step6_merge():
             st.rerun()
 
 
+# ─── Full Auto Pipeline ────────────────────────────────────────────────────────
+
+def _run_full_pipeline(reviewer_label: str, environment: str, target_branch: str):
+    """Run the entire CI/CD pipeline end-to-end automatically."""
+    workflow = st.session_state.get("selected_workflow", "wf_billing_daily_load")
+    sqls     = st.session_state.get("generated_sqls", {})
+    p        = st.session_state.pipeline
+
+    reviewer_name = reviewer_label.split("—")[0].strip()
+
+    progress = st.progress(0)
+    status   = st.empty()
+
+    # Step 1: Create MR
+    status.markdown("**📝 Step 1/6: Creating Merge Request...**")
+    time.sleep(1.0)
+    mr_id  = random.randint(100, 999)
+    mr_title = f"feat: migrate {workflow} to BigQuery + Airflow"
+    mr_url   = f"https://github.com/spunugu/informatica/pull/{mr_id}"
+    progress.progress(1/6)
+    _log(f"MR #{mr_id} created: {mr_title}", "SUCCESS")
+    _log(f"Branch: feature/migrate-{workflow.replace('wf_','')} → {target_branch}", "INFO")
+    _log(f"Files: {len(sqls)} SQL + 1 DAG", "INFO")
+
+    # Step 2: Assign reviewer
+    status.markdown(f"**👥 Step 2/6: Assigning reviewer to {reviewer_name}...**")
+    time.sleep(0.8)
+    progress.progress(2/6)
+    _log(f"Assigned to: Srinivas Punugu", "SUCCESS")
+    _log(f"Review requested from: {reviewer_name}", "INFO")
+    _log(f"Email notification sent to {reviewer_name}", "INFO")
+
+    # Step 3: Auto-approve
+    status.markdown(f"**✅ Step 3/6: Auto-approving MR for {environment}...**")
+    time.sleep(1.0)
+    progress.progress(3/6)
+    _log(f"MR #{mr_id} approved by {reviewer_name}", "SUCCESS")
+    _log("Review comment: LGTM ✅ — SQL looks good, approved for pre-prod deploy.", "INFO")
+    _log("All checklist items passed", "SUCCESS")
+
+    # Step 4: Jenkins build
+    status.markdown("**🔨 Step 4/6: Triggering Jenkins build...**")
+    build_num = random.randint(200, 999)
+    build_url = f"https://jenkins.example.com/job/etl-migrate-{workflow.replace('wf_','')}/{build_num}"
+    stages = ["Checkout", "Lint & Validate", "Integration Tests", "Upload to GCS", "Update Registry", "Notify"]
+    for stage in stages:
+        time.sleep(0.4)
+        _log(f"Jenkins stage [{stage}] passed", "SUCCESS")
+    progress.progress(4/6)
+    _log(f"Jenkins build #{build_num} PASSED ✅", "SUCCESS")
+
+    # Step 5: Deploy to GCS
+    status.markdown("**☁️ Step 5/6: Deploying to GCS and Git...**")
+    gcs_sql  = "gs://your-etl-bucket/sql/"
+    gcs_dag  = "gs://your-composer-bucket/dags/"
+    git_sql  = f"migrations/sql/{workflow}/"
+    git_dag  = "airflow/dags/"
+
+    deploy_files = []
+    for session in sqls.keys():
+        time.sleep(0.3)
+        deploy_files.append({
+            "file": f"{session}.sql",
+            "gcs":  f"{gcs_sql}{session}.sql",
+            "git":  f"{git_sql}{session}.sql",
+            "type": "SQL"
+        })
+        _log(f"Deployed: {gcs_sql}{session}.sql", "SUCCESS")
+
+    dag_name = workflow.replace("wf_", "dag_") + ".py"
+    time.sleep(0.3)
+    deploy_files.append({
+        "file": dag_name,
+        "gcs":  f"{gcs_dag}{dag_name}",
+        "git":  f"{git_dag}{dag_name}",
+        "type": "DAG"
+    })
+    _log(f"Deployed: {gcs_dag}{dag_name}", "SUCCESS")
+    _log(f"All {len(deploy_files)} files committed to Git", "SUCCESS")
+    progress.progress(5/6)
+
+    # Step 6: Merge to main
+    status.markdown("**🚀 Step 6/6: Merging to main branch...**")
+    time.sleep(1.0)
+    progress.progress(1.0)
+    _log(f"MR #{mr_id} merged to main (Squash and merge)", "SUCCESS")
+    _log(f"Branch feature/migrate-{workflow.replace('wf_','')} deleted", "INFO")
+    _log("🎉 Migration pipeline complete!", "SUCCESS")
+
+    status.empty()
+    progress.empty()
+
+    # Update full pipeline state
+    st.session_state.pipeline.update({
+        "mr_id":          mr_id,
+        "mr_url":         mr_url,
+        "mr_title":       mr_title,
+        "mr_status":      "approved",
+        "mr_assignee":    "Srinivas Punugu",
+        "mr_reviewer":    reviewer_name,
+        "mr_branch":      f"feature/migrate-{workflow.replace('wf_','')}",
+        "mr_target":      target_branch,
+        "mr_repo":        "spunugu/informatica",
+        "jenkins_build":  build_num,
+        "jenkins_status": "success",
+        "jenkins_url":    build_url,
+        "jenkins_env":    environment,
+        "gcs_deployed":   True,
+        "gcs_paths":      deploy_files,
+        "gcs_sql_full":   gcs_sql,
+        "gcs_dag_full":   gcs_dag,
+        "git_merged":     True,
+        "auto_merge":     True,
+        "current_step":   6,
+    })
+
+
 # ─── Main render ──────────────────────────────────────────────────────────────
 
 def render():
@@ -622,6 +753,40 @@ def render():
     if not st.session_state.get("generated_sqls"):
         st.warning("⚠️ Complete **Tab 4: SQL Converter** first to generate SQL + DAG files.")
         return
+
+    # ── Auto End-to-End Pipeline Button ──────────────────────────────────────
+    if not p["git_merged"]:
+        st.markdown("""
+        <div style="background:linear-gradient(135deg,#1e1b4b,#1e293b);border:1px solid #6366f1;
+                    border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+            <div style="font-size:15px;font-weight:700;color:#f1f5f9;">⚡ Run Full Pipeline Automatically</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:4px;">
+                Creates MR → assigns reviewer → auto-approves → triggers Jenkins → deploys to GCS → merges to main
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col_auto1, col_auto2, col_auto3 = st.columns(3)
+        with col_auto1:
+            auto_reviewer = st.selectbox("Auto-assign reviewer",
+                ["Priya Sharma — ETL Architect", "Rajesh Kumar — Senior DE",
+                 "Ankit Patel — BigQuery SME", "Deepa Nair — DE Lead"],
+                key="auto_reviewer_sel")
+        with col_auto2:
+            auto_env = st.selectbox("Deploy environment",
+                ["pre-prod", "prod"], key="auto_env_sel")
+        with col_auto3:
+            auto_branch = st.selectbox("Target branch",
+                ["develop", "main"], key="auto_branch_sel")
+
+        if st.button("🚀 Run Full Pipeline End-to-End", type="primary",
+                     use_container_width=True, key="btn_full_pipeline"):
+            _run_full_pipeline(auto_reviewer, auto_env, auto_branch)
+            st.rerun()
+
+        st.markdown("---")
+        st.markdown("**Or run step by step below ↓**")
+        st.markdown("---")
 
     # Pipeline status bar
     _render_pipeline_status()
