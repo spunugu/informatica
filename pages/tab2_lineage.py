@@ -87,11 +87,17 @@ def _load_demo():
     parsed = parse_workflow_xml(xml)
     st.session_state.update({
         "selected_workflow": wf, "selected_folder": folder,
-        "wf_merged_xml": xml, "wf_parsed": parsed,
+        "wf_merged_xml": xml, "wf_parsed": parsed, "wf_parsed_full": parsed,
         "curr_sessions": mock["sessions"], "curr_worklets": mock["worklets"],
         "curr_mappings": mock["mappings"], "curr_sources": mock["sources"],
         "curr_targets": mock["targets"], "curr_lookups": mock["lookups"],
         "row_count": mock["row_count"], "complexity": mock["complexity"],
         "connected": True,
-        "wf_session_io": {s: {"sources": mock["sources"], "targets": mock["targets"], "lookups": mock["lookups"]} for s in mock["sessions"]}
+        "wf_session_io": {
+            s: {"sources": mock["sources"], "targets": mock["targets"], "lookups": mock["lookups"],
+                "mapping": f"m_{s.replace('s_m_','')}", "source_fields": {}, "target_fields": {},
+                "transformations": [], "pre_commands": [], "post_commands": [],
+                "commit_interval": 10000, "error_threshold": 0}
+            for s in mock["sessions"]
+        }
     })
