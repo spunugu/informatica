@@ -21,7 +21,7 @@ import time
 import os
 import io
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from utils.infa_client import (
     connect_repository, list_folders, list_workflows,
@@ -279,21 +279,21 @@ def _mock_session_log_full(session_name: str, workflow: str, rows: int) -> str:
         f"",
         f"[{start.strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10033 Session task instance [{session_name}] started.",
         f"[{start.strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10041 Connected to database [TD_PRD] as user [etl_svc].",
-        f"[{start.replace(second=5).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10048 Source qualifier SQL executed:",
+        f"[{(start + timedelta(seconds=5)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10048 Source qualifier SQL executed:",
         f"   SELECT ACCOUNT_ID, ACCOUNT_NAME, AMOUNT, EFFECTIVE_DATE",
         f"   FROM STG.{session_name.upper().replace('S_M_','')}",
         f"   WHERE DATE(EFFECTIVE_DATE) = TRUNC(SYSDATE)",
-        f"[{start.replace(minute=2).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Building lookup cache [LKP_ACCOUNT_MASTER]...",
-        f"[{start.replace(minute=4).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Lookup cache [LKP_ACCOUNT_MASTER] complete: 2,341,092 rows cached.",
-        f"[{start.replace(minute=5).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Building lookup cache [LKP_RATE_TABLE]...",
-        f"[{start.replace(minute=6).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Lookup cache [LKP_RATE_TABLE] complete: 15,420 rows cached.",
-        f"[{start.replace(minute=7).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10071 Transformation [EXP_TRANSFORM] started.",
-        f"[{start.replace(minute=30).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows//2:,} rows committed to target.",
-        f"[{start.replace(hour=start.hour+1, minute=0).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows:,} rows committed to target.",
-        f"[{start.replace(minute=62).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10082 Load complete. Total rows: {rows:,} inserted, 0 updated, 0 deleted, 0 rejected.",
-        f"[{start.replace(minute=63).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Post-session command [cleanup_staging.ksh] executed successfully.",
-        f"[{start.replace(minute=64).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Post-session command [notify_downstream.ksh] executed successfully.",
-        f"[{start.replace(minute=65).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Session task instance [{session_name}] completed successfully.",
+        f"[{(start + timedelta(minutes=2)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Building lookup cache [LKP_ACCOUNT_MASTER]...",
+        f"[{(start + timedelta(minutes=4)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Lookup cache [LKP_ACCOUNT_MASTER] complete: 2,341,092 rows cached.",
+        f"[{(start + timedelta(minutes=5)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Building lookup cache [LKP_RATE_TABLE]...",
+        f"[{(start + timedelta(minutes=6)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Lookup cache [LKP_RATE_TABLE] complete: 15,420 rows cached.",
+        f"[{(start + timedelta(minutes=7)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10071 Transformation [EXP_TRANSFORM] started.",
+        f"[{(start + timedelta(minutes=30)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows//2:,} rows committed to target.",
+        f"[{(start + timedelta(minutes=60)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows:,} rows committed to target.",
+        f"[{(start + timedelta(minutes=62)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10082 Load complete. Total rows: {rows:,} inserted, 0 updated, 0 deleted, 0 rejected.",
+        f"[{(start + timedelta(minutes=63)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Post-session command [cleanup_staging.ksh] executed successfully.",
+        f"[{(start + timedelta(minutes=64)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Post-session command [notify_downstream.ksh] executed successfully.",
+        f"[{(start + timedelta(minutes=65)).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Session task instance [{session_name}] completed successfully.",
         f"",
         f"{'='*70}",
         f"Session Statistics Summary:",
