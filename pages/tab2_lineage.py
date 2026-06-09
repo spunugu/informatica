@@ -173,10 +173,10 @@ def render():
         st.warning("⚠️ Complete **Tab 1** first.")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("▶️ Load Demo: Billing Workflow", use_container_width=True, type="primary"):
+            if st.button("▶️ Load Demo: Billing Workflow", use_container_width=True, type="primary", key="t2_demo_billing"):
                 _load_demo("wf_billing_daily_load"); st.rerun()
         with col2:
-            if st.button("▶️ Load Demo: Network ETL", use_container_width=True):
+            if st.button("▶️ Load Demo: Network ETL", use_container_width=True, key="t2_demo_network"):
                 _load_demo("wf_network_usage_etl"); st.rerun()
         return
 
