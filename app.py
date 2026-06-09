@@ -133,14 +133,15 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-from pages import tab1_repository, tab2_lineage, tab3_schema, tab4_converter, tab5_validation
+from pages import tab1_repository, tab2_lineage, tab3_schema, tab4_converter, tab5_validation, tab6_ai_assistant
 
-t1, t2, t3, t4, t5 = st.tabs([
+t1, t2, t3, t4, t5, t6 = st.tabs([
     "🗂️ 1. Repository Explorer",
     "🔗 2. Lineage Analysis",
     "🧬 3. Schema Analyzer",
     "⚡ 4. SQL Converter",
-    "✅ 5. Validation"
+    "✅ 5. Validation",
+    "🤖 6. AI Assistant",
 ])
 
 with t1: tab1_repository.render()
@@ -148,3 +149,4 @@ with t2: tab2_lineage.render()
 with t3: tab3_schema.render()
 with t4: tab4_converter.render()
 with t5: tab5_validation.render()
+with t6: tab6_ai_assistant.render()
