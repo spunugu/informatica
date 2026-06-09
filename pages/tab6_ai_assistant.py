@@ -284,8 +284,9 @@ def render():
                             margin-top:6px;">{cfg['free'][:45]}</div>
             </div>
             """, unsafe_allow_html=True)
+            btn_label = "✅ Selected" if selected else f"Use {cfg['name']}"
             if st.button(
-                f"{'✅ Selected' if selected else f'Use {cfg[\"name\"]}'}",
+                btn_label,
                 key=f"sel_{key}",
                 use_container_width=True,
                 type="primary" if selected else "secondary"
