@@ -367,14 +367,23 @@ OPTIONS (description = 'ETL Automator audit log — built by Srinivas Punugu');"
             cfg["gcs_params"]  = st.text_input("Params Path", value=cfg["gcs_params"], key="gcs_params")
 
         st.markdown("**Full Path Preview:**")
-        workflow_ex = st.session_state.get("selected_workflow", "wf_billing_daily_load")
-        session_ex  = "s_m_billing_extract"
+        workflow_ex  = st.session_state.get("selected_workflow") or "wf_billing_daily_load"
+        session_ex   = "s_m_billing_extract"
+        dag_ex       = workflow_ex.replace("wf_", "dag_") if workflow_ex.startswith("wf_") else f"dag_{workflow_ex}"
+        sql_bucket   = cfg.get("gcs_sql_bucket", "gs://your-etl-bucket").rstrip("/")
+        sql_prefix   = cfg.get("gcs_sql_prefix", "sql/").strip("/")
+        dag_bucket   = cfg.get("gcs_dag_bucket", "gs://your-composer-bucket").rstrip("/")
+        dag_prefix   = cfg.get("gcs_dag_prefix", "dags/").strip("/")
+        gcs_logs     = cfg.get("gcs_logs", "gs://your-etl-bucket/logs/").rstrip("/")
+        gcs_params   = cfg.get("gcs_params", "gs://your-etl-bucket/params/").rstrip("/")
+        gcs_archive  = cfg.get("gcs_archive", "gs://your-etl-bucket/archive/").rstrip("/")
+
         paths = [
-            ("SQL File",   f"{cfg['gcs_sql_bucket']}/{cfg['gcs_sql_prefix']}{workflow_ex}/{session_ex}.sql"),
-            ("DAG File",   f"{cfg['gcs_dag_bucket']}/{cfg['gcs_dag_prefix']}{workflow_ex.replace('wf_','dag_')}.py"),
-            ("Session Log",f"{cfg['gcs_logs']}{workflow_ex}/{session_ex}.log"),
-            ("Param File", f"{cfg['gcs_params']}{workflow_ex}.param"),
-            ("Archive",    f"{cfg['gcs_archive']}{workflow_ex}/"),
+            ("SQL File",    f"{sql_bucket}/{sql_prefix}/{workflow_ex}/{session_ex}.sql"),
+            ("DAG File",    f"{dag_bucket}/{dag_prefix}/{dag_ex}.py"),
+            ("Session Log", f"{gcs_logs}/{workflow_ex}/{session_ex}.log"),
+            ("Param File",  f"{gcs_params}/{workflow_ex}.param"),
+            ("Archive",     f"{gcs_archive}/{workflow_ex}/"),
         ]
         for label, path in paths:
             st.markdown(f"""
@@ -388,16 +397,16 @@ OPTIONS (description = 'ETL Automator audit log — built by Srinivas Punugu');"
 
         st.markdown("**gsutil Deploy Commands Preview:**")
         st.code(f"""# Upload SQL files
-gsutil cp sql/*.sql {cfg['gcs_sql_bucket']}/{cfg['gcs_sql_prefix']}{workflow_ex}/
+gsutil cp sql/*.sql {sql_bucket}/{sql_prefix}/{workflow_ex}/
 
 # Upload DAG
-gsutil cp dags/*.py {cfg['gcs_dag_bucket']}/{cfg['gcs_dag_prefix']}
+gsutil cp dags/*.py {dag_bucket}/{dag_prefix}/
 
 # Check deployment
-gsutil ls {cfg['gcs_sql_bucket']}/{cfg['gcs_sql_prefix']}{workflow_ex}/
+gsutil ls {sql_bucket}/{sql_prefix}/{workflow_ex}/
 
 # Rollback (delete deployed files)
-gsutil -m rm {cfg['gcs_sql_bucket']}/{cfg['gcs_sql_prefix']}{workflow_ex}/*.sql""", language="bash")
+gsutil -m rm {sql_bucket}/{sql_prefix}/{workflow_ex}/*.sql""", language="bash")
 
     # ── Git ───────────────────────────────────────────────────────────────────
     with cfg_tabs[4]:
