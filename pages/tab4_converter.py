@@ -129,11 +129,11 @@ def render():
         if demo:
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("▶️ Load Demo: Billing Workflow", use_container_width=True, type="primary"):
+                if st.button("▶️ Load Demo: Billing Workflow", use_container_width=True, type="primary", key="t4_demo_billing"):
                     _load_demo_session("wf_billing_daily_load")
                     st.rerun()
             with col2:
-                if st.button("▶️ Load Demo: Network ETL (Critical)", use_container_width=True):
+                if st.button("▶️ Load Demo: Network ETL (Critical)", use_container_width=True, key="t4_demo_network"):
                     _load_demo_session("wf_network_usage_etl")
                     st.rerun()
         return
