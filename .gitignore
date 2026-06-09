@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+*.xml
+*.log
+.DS_Store
+venv/
+.streamlit/secrets.toml
+*credentials*.json
+*service-account*.json
