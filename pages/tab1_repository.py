@@ -62,7 +62,7 @@ def render():
         selected_folder = st.selectbox("📁 Select Folder", folders, key="sel_folder")
     with col2:
         if st.button("📋 Fetch Workflows", use_container_width=True):
-            with st.spinner(f"Fetching workflows..."):
+            with st.spinner("Fetching workflows..."):
                 st.session_state.workflows = list_workflows(selected_folder)
                 st.session_state.selected_folder = selected_folder
         workflows = st.session_state.get("workflows", [])
@@ -76,24 +76,42 @@ def render():
                 parsed = parse_workflow_xml(xml_text)
                 mock = MOCK_SESSION_IO.get(selected_workflow, DEFAULT_MOCK)
 
-                st.session_state.wf_merged_xml = xml_text
-                st.session_state.wf_parsed = parsed
-                st.session_state.curr_sessions = parsed["sessions"] or mock["sessions"]
-                st.session_state.curr_worklets = parsed["worklets"] or mock["worklets"]
-                st.session_state.curr_mappings = parsed["mappings"] or mock["mappings"]
-                st.session_state.curr_sources = [s["name"] if isinstance(s, dict) else s for s in (parsed["sources"] or [{"name": x} for x in mock["sources"]])]
-                st.session_state.curr_targets = [t["name"] if isinstance(t, dict) else t for t in (parsed["targets"] or [{"name": x} for x in mock["targets"]])]
-                st.session_state.curr_lookups = [l["name"] if isinstance(l, dict) else l for l in (parsed["lookups"] or [{"name": x} for x in mock["lookups"]])]
-                st.session_state.wf_session_io = {
-                    s: {"sources": mock["sources"], "targets": mock["targets"], "lookups": mock["lookups"]}
-                    for s in st.session_state.curr_sessions
+                p_sessions = [s.name for s in parsed.sessions] if parsed.sessions else mock["sessions"]
+                p_worklets = [w.name for w in parsed.worklets] if parsed.worklets else mock["worklets"]
+                p_mappings = [m.name for m in parsed.mappings] if parsed.mappings else mock["mappings"]
+                p_sources  = [s.name for s in parsed.sources]  if parsed.sources  else mock["sources"]
+                p_targets  = [t.name for t in parsed.targets]  if parsed.targets  else mock["targets"]
+                p_lookups  = []
+                for m in parsed.mappings:
+                    for lkp in m.get_lookup_transforms():
+                        lkp_name = lkp.attributes.get("Lookup table name", lkp.name)
+                        if lkp_name and lkp_name not in p_lookups:
+                            p_lookups.append(lkp_name)
+                if not p_lookups:
+                    p_lookups = mock["lookups"]
+
+                st.session_state.wf_merged_xml   = xml_text
+                st.session_state.wf_parsed        = parsed
+                st.session_state.wf_parsed_full   = parsed
+                st.session_state.curr_sessions    = p_sessions
+                st.session_state.curr_worklets    = p_worklets
+                st.session_state.curr_mappings    = p_mappings
+                st.session_state.curr_sources     = p_sources
+                st.session_state.curr_targets     = p_targets
+                st.session_state.curr_lookups     = p_lookups
+                st.session_state.wf_session_io    = parsed.session_io if parsed.session_io else {
+                    s: {"sources": mock["sources"], "targets": mock["targets"], "lookups": mock["lookups"],
+                        "mapping": f"m_{s.replace('s_m_','')}", "source_fields": {}, "target_fields": {},
+                        "transformations": [], "pre_commands": [], "post_commands": [],
+                        "commit_interval": 10000, "error_threshold": 0}
+                    for s in p_sessions
                 }
                 st.session_state.selected_workflow = selected_workflow
-                st.session_state.selected_folder = selected_folder
-                st.session_state.row_count = mock.get("row_count", 0)
-                st.session_state.complexity = get_complexity_badge(st.session_state.curr_sessions, st.session_state.curr_worklets, st.session_state.curr_mappings)
+                st.session_state.selected_folder   = selected_folder
+                st.session_state.row_count          = mock.get("row_count", 0)
+                st.session_state.complexity         = parsed.complexity_badge if parsed.complexity_badge else get_complexity_badge(p_sessions, p_worklets, p_mappings)
 
-        if st.session_state.get("wf_parsed"):
+        if st.session_state.get("wf_parsed") is not None:
             badge = st.session_state.get("complexity", "Low")
             badge_color = complexity_color(badge)
             st.markdown(f"""
