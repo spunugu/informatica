@@ -792,10 +792,12 @@ def render():
     _render_pipeline_status()
     st.markdown("---")
 
-    # If complete — show celebration
+    # If complete — show celebration + full manifest
     if p["git_merged"]:
         workflow = st.session_state.get("selected_workflow", "")
         sqls     = st.session_state.get("generated_sqls", {})
+        dag      = st.session_state.get("generated_dag", "")
+
         st.markdown(f"""
         <div style="background:linear-gradient(135deg,#14532d,#166534);border:2px solid #22c55e;
                     border-radius:12px;padding:24px;text-align:center;margin:16px 0;">
@@ -804,16 +806,155 @@ def render():
                 Migration Complete!
             </div>
             <div style="font-size:14px;color:#86efac;margin-top:8px;">
-                {workflow} has been successfully migrated to BigQuery + Airflow
+                {workflow} successfully migrated to BigQuery + Airflow
             </div>
             <div style="font-size:13px;color:#4ade80;margin-top:12px;">
-                ✅ MR #{p['mr_id']} merged to main &nbsp;|&nbsp;
-                ✅ {len(sqls)} SQL files deployed to GCS &nbsp;|&nbsp;
-                ✅ Airflow DAG live &nbsp;|&nbsp;
-                ✅ Jenkins build #{p['jenkins_build']} passed
+                ✅ MR #{p['mr_id']} merged &nbsp;|&nbsp;
+                ✅ {len(sqls)} SQL + 1 DAG deployed &nbsp;|&nbsp;
+                ✅ Jenkins #{p['jenkins_build']} passed &nbsp;|&nbsp;
+                ✅ Live on {p.get('jenkins_env','pre-prod')}
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # ── Deployed Files Manifest ───────────────────────────────────────────
+        st.markdown("#### 📦 Deployed Files Manifest")
+
+        deploy_files = p.get("gcs_paths", [])
+        gcs_sql  = p.get("gcs_sql_full", "gs://your-etl-bucket/sql/")
+        gcs_dag  = p.get("gcs_dag_full", "gs://your-composer-bucket/dags/")
+        git_sql  = f"migrations/sql/{workflow}/"
+        git_dag  = "airflow/dags/"
+        env      = p.get("jenkins_env", "pre-prod")
+        ts       = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Files table
+        for f in deploy_files:
+            icon     = "📄" if f["type"] == "SQL" else "🌊"
+            type_col = "#3b82f6" if f["type"] == "SQL" else "#22c55e"
+            st.markdown(f"""
+            <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;
+                        padding:12px 16px;margin:6px 0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <span style="background:{type_col}22;color:{type_col};border:1px solid {type_col};
+                                     padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">
+                            {f['type']}
+                        </span>
+                        <span style="color:#f1f5f9;font-weight:600;margin-left:8px;">{icon} {f['file']}</span>
+                    </div>
+                    <span style="color:#22c55e;font-size:11px;">✅ Deployed</span>
+                </div>
+                <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                    <div style="font-size:11px;">
+                        <span style="color:#64748b;">☁️ GCS: </span>
+                        <code style="color:#93c5fd;font-size:10px;">{f['gcs']}</code>
+                    </div>
+                    <div style="font-size:11px;">
+                        <span style="color:#64748b;">📁 Git: </span>
+                        <code style="color:#d8b4fe;font-size:10px;">{f['git']}</code>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # ── Deploy File (deployment config) ──────────────────────────────────
+        st.markdown("#### 📋 Deployment Config File")
+        st.caption("This file is created and committed to Git as part of the pipeline — tracks what was deployed where")
+
+        dag_name    = workflow.replace("wf_", "dag_") + ".py"
+        sql_files   = [f for f in deploy_files if f["type"] == "SQL"]
+        deploy_yaml = f"""# ============================================================
+# ETL Automator — Deployment Config
+# Built by   : Srinivas Punugu
+# Workflow   : {workflow}
+# MR         : #{p['mr_id']} — {p['mr_title']}
+# Approved by: {p['mr_reviewer']}
+# Jenkins    : Build #{p['jenkins_build']} ({p.get('jenkins_url','')})
+# Environment: {env}
+# Deployed   : {ts}
+# ============================================================
+
+deployment:
+  workflow: {workflow}
+  environment: {env}
+  mr_id: {p['mr_id']}
+  mr_branch: {p.get('mr_branch', f'feature/migrate-{workflow}')}
+  merged_to: main
+  deployed_by: Srinivas Punugu
+  deployed_at: "{ts}"
+  jenkins_build: {p['jenkins_build']}
+  jenkins_status: SUCCESS
+
+sql_files:
+{chr(10).join([f"  - file: {f['file']}{chr(10)}    gcs_path: {f['gcs']}{chr(10)}    git_path: {f['git']}{chr(10)}    size_lines: {len(sqls.get(f['file'].replace('.sql',''), '').split(chr(10)))}" for f in sql_files])}
+
+dag_file:
+  file: {dag_name}
+  gcs_path: {gcs_dag}{dag_name}
+  git_path: {git_dag}{dag_name}
+  schedule: "0 6 * * *"
+  airflow_env: {env}
+
+gcs_paths:
+  sql_bucket: {gcs_sql.split('/sql')[0]}
+  sql_prefix: sql/{workflow}/
+  dag_bucket: {gcs_dag.split('/dags')[0]}
+  dag_prefix: dags/
+
+validation:
+  row_count_delta_pct: {st.session_state.get('rowcount_results', {}).get('delta_pct', 0.0):.4f}
+  logic_checks_passed: {st.session_state.get('logic_results', {}).get('passed', 0)}
+  schema_mismatches: {st.session_state.get('schema_results', {}).get('type_mismatches', 0)}
+  overall_status: APPROVED
+
+rollback:
+  enabled: true
+  previous_branch: {p.get('mr_branch', 'feature/migration')}
+  rollback_cmd: "git revert {p['mr_id']} && gsutil -m rm {gcs_sql}*.sql"
+"""
+        st.code(deploy_yaml, language="yaml")
+
+        # Download deploy file
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            st.download_button(
+                "⬇️ Download deploy_config.yaml",
+                data=deploy_yaml,
+                file_name=f"deploy_{workflow}_{env}.yaml",
+                mime="text/yaml",
+                use_container_width=True,
+                key="dl_deploy_yaml"
+            )
+        with col_d2:
+            # Full manifest JSON
+            manifest = {
+                "workflow": workflow,
+                "mr_id": p['mr_id'],
+                "mr_title": p['mr_title'],
+                "approved_by": p['mr_reviewer'],
+                "jenkins_build": p['jenkins_build'],
+                "environment": env,
+                "deployed_at": ts,
+                "deployed_by": "Srinivas Punugu",
+                "files": deploy_files,
+                "gcs_sql_path": gcs_sql,
+                "gcs_dag_path": gcs_dag,
+                "status": "SUCCESS"
+            }
+            import json
+            st.download_button(
+                "⬇️ Download manifest.json",
+                data=json.dumps(manifest, indent=2),
+                file_name=f"manifest_{workflow}.json",
+                mime="application/json",
+                use_container_width=True,
+                key="dl_manifest_json"
+            )
 
     # Step sections — always show, disabled if not reached yet
     with st.expander("📝 Step 1: Create Merge Request",
