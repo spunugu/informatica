@@ -25,7 +25,7 @@ from datetime import datetime
 
 from utils.infa_client import (
     connect_repository, list_folders, list_workflows,
-    export_workflow_xml, get_session_stats, get_session_log
+    export_workflow_xml, get_session_stats
 )
 from utils.parser import (
     parse_workflow_xml, get_complexity_badge,
