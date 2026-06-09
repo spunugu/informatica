@@ -133,9 +133,10 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-from pages import tab1_repository, tab2_lineage, tab3_schema, tab4_converter, tab5_validation, tab6_ai_assistant, tab7_cicd
+from pages import tab0_config, tab1_repository, tab2_lineage, tab3_schema, tab4_converter, tab5_validation, tab6_ai_assistant, tab7_cicd
 
-t1, t2, t3, t4, t5, t6, t7 = st.tabs([
+t0, t1, t2, t3, t4, t5, t6, t7 = st.tabs([
+    "⚙️ 0. Configuration",
     "🗂️ 1. Repository Explorer",
     "🔗 2. Lineage Analysis",
     "🧬 3. Schema Analyzer",
@@ -145,6 +146,7 @@ t1, t2, t3, t4, t5, t6, t7 = st.tabs([
     "🚀 7. CI/CD Pipeline",
 ])
 
+with t0: tab0_config.render()
 with t1: tab1_repository.render()
 with t2: tab2_lineage.render()
 with t3: tab3_schema.render()
