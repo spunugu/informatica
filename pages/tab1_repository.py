@@ -289,7 +289,7 @@ def _mock_session_log_full(session_name: str, workflow: str, rows: int) -> str:
         f"[{start.replace(minute=6).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | READER_1_1_1) PETL_10065 Lookup cache [LKP_RATE_TABLE] complete: 15,420 rows cached.",
         f"[{start.replace(minute=7).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10071 Transformation [EXP_TRANSFORM] started.",
         f"[{start.replace(minute=30).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows//2:,} rows committed to target.",
-        f"[{start.replace(minute=60).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows:,} rows committed to target.",
+        f"[{start.replace(hour=start.hour+1, minute=0).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10080 Writer run completed. {rows:,} rows committed to target.",
         f"[{start.replace(minute=62).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | WRITER_1_*_1) PETL_10082 Load complete. Total rows: {rows:,} inserted, 0 updated, 0 deleted, 0 rejected.",
         f"[{start.replace(minute=63).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Post-session command [cleanup_staging.ksh] executed successfully.",
         f"[{start.replace(minute=64).strftime('%m/%d/%Y %H:%M:%S')}] INFO  (IS | TRANSF_1_1_1) PETL_10033 Post-session command [notify_downstream.ksh] executed successfully.",
