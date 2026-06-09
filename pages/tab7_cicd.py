@@ -113,7 +113,96 @@ def _render_step1_create_mr():
     p         = st.session_state.pipeline
 
     if p["mr_id"]:
-        st.success(f"✅ MR already created — **{p['mr_title']}** ({p['mr_url']})")
+        st.success(f"✅ MR **#{p['mr_id']}** created — [{p['mr_title']}]({p['mr_url']})")
+
+        sqls    = st.session_state.get("generated_sqls", {})
+        dag     = st.session_state.get("generated_dag", "")
+        workflow = st.session_state.get("selected_workflow", "")
+
+        st.markdown("---")
+
+        # ── Deploy File: Git ↔ GCS path mapping ──────────────────────────────
+        st.markdown("#### 📋 Deploy File — Git ↔ GCS Path Mapping")
+        st.caption("Shows exactly which file goes to which Git path and which GCS path")
+
+        gcs_sql = "gs://your-etl-bucket/sql/"
+        gcs_dag = "gs://your-composer-bucket/dags/"
+        git_sql = f"migrations/sql/{workflow}/"
+        git_dag = "airflow/dags/"
+
+        deploy_rows = []
+        for session, sql in sqls.items():
+            deploy_rows.append({
+                "file": f"{session}.sql",
+                "type": "SQL",
+                "git_path": f"{git_sql}{session}.sql",
+                "gcs_path": f"{gcs_sql}{session}.sql",
+                "lines": len(sql.split("\n")),
+                "size": f"{len(sql.encode())/1024:.1f} KB",
+            })
+        dag_name = workflow.replace("wf_", "dag_") + ".py"
+        deploy_rows.append({
+            "file": dag_name,
+            "type": "DAG",
+            "git_path": f"{git_dag}{dag_name}",
+            "gcs_path": f"{gcs_dag}{dag_name}",
+            "lines": len(dag.split("\n")),
+            "size": f"{len(dag.encode())/1024:.1f} KB",
+        })
+
+        # Side-by-side deploy file table
+        header_col1, header_col2, header_col3, header_col4 = st.columns([2, 3, 3, 1])
+        header_col1.markdown("**📄 File**")
+        header_col2.markdown("**📁 Git Path**")
+        header_col3.markdown("**☁️ GCS Path**")
+        header_col4.markdown("**📊 Size**")
+
+        for row in deploy_rows:
+            type_color = "#3b82f6" if row["type"] == "SQL" else "#22c55e"
+            c1, c2, c3, c4 = st.columns([2, 3, 3, 1])
+            with c1:
+                st.markdown(f"""<span style="background:{type_color}22;color:{type_color};
+                    border:1px solid {type_color};padding:1px 6px;border-radius:8px;
+                    font-size:10px;font-weight:700;">{row['type']}</span>
+                    <code style="font-size:11px;margin-left:6px;">{row['file']}</code>""",
+                    unsafe_allow_html=True)
+            with c2:
+                st.markdown(f"<code style='font-size:10px;color:#d8b4fe;'>{row['git_path']}</code>",
+                    unsafe_allow_html=True)
+            with c3:
+                st.markdown(f"<code style='font-size:10px;color:#93c5fd;'>{row['gcs_path']}</code>",
+                    unsafe_allow_html=True)
+            with c4:
+                st.markdown(f"<span style='font-size:11px;color:#94a3b8;'>{row['size']}</span>",
+                    unsafe_allow_html=True)
+            st.markdown("<hr style='margin:4px 0;border-color:#1e293b;'>", unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # ── SQL File Previews ─────────────────────────────────────────────────
+        st.markdown("#### 📄 SQL Files in this MR")
+        sql_tabs = st.tabs([f"⚡ {s.replace('s_m_','').replace('_',' ').title()}" for s in sqls.keys()])
+        for tab, (session, sql) in zip(sql_tabs, sqls.items()):
+            with tab:
+                lines = len(sql.split("\n"))
+                size  = f"{len(sql.encode())/1024:.1f} KB"
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Lines", lines)
+                c2.metric("Size", size)
+                c3.metric("Git Path", f"{git_sql}{session}.sql")
+                st.code(sql, language="sql")
+
+        st.markdown("---")
+
+        # ── DAG File Preview ──────────────────────────────────────────────────
+        st.markdown("#### 🌊 DAG File in this MR")
+        if dag:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Lines", len(dag.split("\n")))
+            c2.metric("Size", f"{len(dag.encode())/1024:.1f} KB")
+            c3.metric("GCS Path", f"{gcs_dag}{dag_name}")
+            st.code(dag, language="python")
+
         return
 
     if not sqls:
