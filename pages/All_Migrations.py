@@ -399,7 +399,8 @@ st.markdown("""
 
 # Back button
 if st.button("← Back to Home", key="back_home_all"):
-    st.switch_page("Home.py")
+    st.page_link("Home.py", label="🏠 Home", icon="🏠")
+    st.stop()
 
 st.markdown("---")
 
