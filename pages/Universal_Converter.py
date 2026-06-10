@@ -6,5 +6,6 @@ st.set_page_config(
     page_icon="🌐", layout="wide",
 )
 
-# Just redirect to All_Migrations which has the full implementation
-st.switch_page("pages/All_Migrations.py")
+st.markdown("## 🌐 Universal ETL Converter")
+st.markdown("Redirecting to All Migrations...")
+st.page_link("pages/All_Migrations.py", label="→ Go to All Migrations", icon="🌐")
