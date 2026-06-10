@@ -57,7 +57,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session State Defaults ─────────────────────────────────────────────────────
+# ── Session State Defaults ────────────────────────────────────────────────────
 for k, v in {
     "connected": False, "folders": [], "workflows": [],
     "selected_folder": None, "selected_workflow": None,
@@ -69,12 +69,11 @@ for k, v in {
     "dataset_map": {}, "bq_project": "your-gcp-project",
     "logic_results": None, "rowcount_results": None,
     "schema_results": None, "validation_steps": set(),
-    "demo_mode": True,
 }.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="text-align:center;padding:16px 0 24px;">
@@ -85,20 +84,8 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Navigation to other apps ──────────────────────────────────────────────
-    st.markdown("#### 🌐 Navigation")
-    if st.button("🏠 Home / Landing Page", use_container_width=True, key="nav_home"):
-        st.page_link("Home.py", label="Home")
-        st.stop()
-    if st.button("🌐 All Migrations", use_container_width=True, key="nav_all"):
-        st.page_link("pages/All_Migrations.py", label="All Migrations")
-        st.stop()
-
-    st.markdown("---")
     st.markdown("#### ⚙️ Settings")
-    demo_mode = st.toggle("Demo Mode", value=st.session_state.get("demo_mode", True),
-                          help="Use sample data — no Informatica needed", key="sidebar_demo")
-    st.session_state.demo_mode = demo_mode
+    demo_mode = st.toggle("Demo Mode", value=True, help="Use sample data — no Informatica needed")
     os.environ["DEMO_MODE"] = "true" if demo_mode else "false"
     if demo_mode:
         st.info("🎭 Running with sample data", icon="ℹ️")
@@ -108,11 +95,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 📍 Progress")
     for label, done in [
-        ("1. Repository Export",  bool(st.session_state.get("wf_merged_xml"))),
-        ("2. Lineage Analyzed",   bool(st.session_state.get("curr_sessions"))),
-        ("3. Schema Mapped",      bool(st.session_state.get("dataset_map"))),
-        ("4. SQL + DAG Built",    bool(st.session_state.get("generated_sqls"))),
-        ("5. Validation Done",    len(st.session_state.get("validation_steps", set())) >= 3),
+        ("1. Repository Export",   bool(st.session_state.get("wf_merged_xml"))),
+        ("2. Lineage Analyzed",    bool(st.session_state.get("curr_sessions"))),
+        ("3. Schema Mapped",       bool(st.session_state.get("dataset_map"))),
+        ("4. SQL + DAG Built",     bool(st.session_state.get("generated_sqls"))),
+        ("5. Validation Done",     len(st.session_state.get("validation_steps", set())) >= 3),
     ]:
         st.markdown(f"{'✅' if done else '⬜'} {label}")
 
@@ -123,24 +110,21 @@ with st.sidebar:
         badge = st.session_state.get("complexity", "Low")
         st.markdown(f"Complexity: {'🟢' if badge=='Low' else '🟡' if badge=='Medium' else '🟠' if badge=='High' else '🔴'} **{badge}**")
         rc = st.session_state.get("row_count", 0)
-        if rc:
-            st.markdown(f"Last Run: `{rc:,}` rows")
+        if rc: st.markdown(f"Last Run: `{rc:,}` rows")
 
     st.markdown("---")
-    if st.button("🔄 Reset All", use_container_width=True, key="reset_all"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+    if st.button("🔄 Reset All", use_container_width=True):
+        for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
 
     st.markdown("""
     <div style="text-align:center;padding-top:24px;color:#475569;font-size:11px;">
-        ETL Automator v1.0<br>
-        Built by <strong style="color:#6366f1;">Srinivas Punugu</strong>
+        ETL Automator v1.0<br>Built by <strong style="color:#6366f1;">Srinivas Punugu</strong>
     </div>
     """, unsafe_allow_html=True)
 
-# ── Header ─────────────────────────────────────────────────────────────────────
-st.markdown("""
+# ── Header ────────────────────────────────────────────────────────────────────
+st.markdown(f"""
 <div class="app-header">
     <div class="title">⚡ ETL <span>Automator</span></div>
     <div class="subtitle">Informatica PowerCenter → Google BigQuery + Apache Airflow</div>
@@ -148,14 +132,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Tabs ───────────────────────────────────────────────────────────────────────
-from pages import (
-    tab0_config, tab1_repository, tab2_lineage, tab3_schema,
-    tab4_converter, tab5_validation, tab6_ai_assistant, tab7_cicd
-)
+# ── Tabs ──────────────────────────────────────────────────────────────────────
+from pages import tab1_repository, tab2_lineage, tab3_schema, tab4_converter, tab5_validation, tab6_ai_assistant, tab7_cicd
 
-t0, t1, t2, t3, t4, t5, t6, t7 = st.tabs([
-    "⚙️ 0. Configuration",
+t1, t2, t3, t4, t5, t6, t7 = st.tabs([
     "🗂️ 1. Repository Explorer",
     "🔗 2. Lineage Analysis",
     "🧬 3. Schema Analyzer",
@@ -165,7 +145,6 @@ t0, t1, t2, t3, t4, t5, t6, t7 = st.tabs([
     "🚀 7. CI/CD Pipeline",
 ])
 
-with t0: tab0_config.render()
 with t1: tab1_repository.render()
 with t2: tab2_lineage.render()
 with t3: tab3_schema.render()
