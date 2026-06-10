@@ -88,9 +88,11 @@ with st.sidebar:
     # ── Navigation to other apps ──────────────────────────────────────────────
     st.markdown("#### 🌐 Navigation")
     if st.button("🏠 Home / Landing Page", use_container_width=True, key="nav_home"):
-        st.switch_page("Home.py")
+        st.page_link("Home.py", label="Home")
+        st.stop()
     if st.button("🌐 All Migrations", use_container_width=True, key="nav_all"):
-        st.switch_page("pages/All_Migrations.py")
+        st.page_link("pages/All_Migrations.py", label="All Migrations")
+        st.stop()
 
     st.markdown("---")
     st.markdown("#### ⚙️ Settings")
