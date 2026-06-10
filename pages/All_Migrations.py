@@ -662,25 +662,25 @@ with main_tabs[4]:
     st.markdown("""<div class="tab-header"><h2>✅ Validation</h2>
     <p>Row count, schema, and logic checks after migration</p></div>""", unsafe_allow_html=True)
 
-    if st.button("▶️ Run Validation Checks", type="primary", use_container_width=True, key="all_val"):
+    if st.button("▶️ Run Validation Checks", type="primary", use_container_width=True, key="btn_all_val"):
         with st.spinner("Running validation..."):
             time.sleep(1.5)
-            rows_src = random.randint(800000, 5000000)
-            rows_tgt = rows_src - random.randint(0, 50)
-            delta    = abs(rows_src - rows_tgt)
+            rows_src  = random.randint(800000, 5000000)
+            rows_tgt  = rows_src - random.randint(0, 50)
+            delta     = abs(rows_src - rows_tgt)
             delta_pct = delta / rows_src * 100
 
-            st.session_state.all_val = {
+            st.session_state["all_val_result"] = {
                 "rows_src": rows_src, "rows_tgt": rows_tgt,
                 "delta": delta, "delta_pct": delta_pct,
                 "schema_matched": random.randint(8, 15),
-                "schema_issues": random.randint(0, 2),
-                "logic_pass": random.randint(3, 6),
-                "logic_fail": random.randint(0, 1),
+                "schema_issues":  random.randint(0, 2),
+                "logic_pass":     random.randint(3, 6),
+                "logic_fail":     random.randint(0, 1),
             }
 
-    if st.session_state.get("all_val"):
-        v = st.session_state.all_val
+    if st.session_state.get("all_val_result"):
+        v = st.session_state["all_val_result"]
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Source Rows",  f"{v['rows_src']:,}")
         c2.metric("Target Rows",  f"{v['rows_tgt']:,}")
