@@ -1,73 +1,51 @@
-# ⚡ ETL Automator
+# GCP Data & AI CoE — Architecture Explorer & Live Demo
 
-**Built by Srinivas Punugu**
+A starter-kit Streamlit app for the Incedo Data Technology CoE (GCP track).
+Shows the end-to-end GCP reference architecture and a working live-data demo.
 
-> Automates migration of Informatica PowerCenter ETL workflows to Google BigQuery + Apache Airflow
-
----
-
-## 🎯 What This Does
-
-Takes Informatica PowerCenter workflows and converts them to:
-- **BigQuery SQL** — one file per Informatica session
-- **Airflow DAG** — replaces the Informatica workflow scheduler
-
-What used to take weeks manually now takes hours.
-
----
-
-## 🗂️ 5-Tab Workflow
-
-| Tab | Purpose |
-|-----|---------|
-| 1️⃣ Repository Explorer | Connect to Informatica, browse & export XML |
-| 2️⃣ Lineage Analysis | Visual data flow diagram |
-| 3️⃣ Schema Analyzer | Map Teradata → BigQuery types, generate DDL |
-| 4️⃣ SQL Converter | Generate BigQuery SQL + Airflow DAG |
-| 5️⃣ Validation | 3-step QA: Logic + Row Count + Schema |
-
----
-
-## 🚀 Run Locally
+## Run locally
 
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open http://localhost:8501 — runs in **Demo Mode** by default.
+## Enable the live BigQuery demo (optional)
 
----
+The app runs fine with sample data out of the box. To pull live results from
+a public BigQuery dataset instead:
 
-## 🔧 Real Mode
-
-1. Toggle **Demo Mode off** in the sidebar
-2. Install Informatica PowerCenter Client (Windows)
-3. Configure GCP credentials: `gcloud auth application-default login`
-4. Enter repo connection details in Tab 1
-
----
-
-## 📁 Structure
-
-```
-etl_automator/
-├── app.py                    ← Main entry point
-├── requirements.txt
-├── .streamlit/config.toml
-├── pages/
-│   ├── tab1_repository.py
-│   ├── tab2_lineage.py
-│   ├── tab3_schema.py
-│   ├── tab4_converter.py
-│   └── tab5_validation.py
-├── utils/
-│   ├── parser.py             ← XML parser + SQL/DAG generators
-│   └── infa_client.py        ← Informatica CLI wrapper
-└── mock_data/
-    └── sample_data.py        ← Demo data
+```bash
+gcloud auth application-default login
+export GOOGLE_CLOUD_PROJECT=your-billing-project-id
+streamlit run app.py
 ```
 
----
+Then enter your project ID in the "Live demo" page and click
+**Run live BigQuery query**. Public datasets don't cost anything to store —
+you're only billed for the (tiny) query bytes scanned.
 
-Built by **Srinivas Punugu** · ETL Automator v1.0
+## Deploy to Cloud Run
+
+```bash
+gcloud run deploy gcp-coe-demo \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GOOGLE_CLOUD_PROJECT=your-billing-project-id
+```
+
+Add a `Dockerfile` if you want a custom container, or let Cloud Run's
+buildpacks handle the Streamlit app automatically (it will detect
+`requirements.txt` and run `streamlit run app.py` if you add a `Procfile`
+with `web: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0`).
+
+## Extending this as a CoE asset
+
+- **Architecture layers page**: swap in your team's actual reference
+  architecture and reusable pattern docs per layer.
+- **Live demo page**: replace the sample query with a real pipeline query
+  from a project-specific dataset once one exists.
+- **Reusable asset catalog page**: point it at a real source (Google Sheet,
+  Firestore, or BigQuery table) instead of the in-memory session list, so
+  the catalog persists across users.

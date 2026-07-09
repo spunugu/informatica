@@ -1,175 +1,234 @@
 """
-ETL Automator — Informatica to BigQuery + Airflow Migration Platform
-Built by Srinivas Punugu
+GCP Data & AI CoE - Architecture Explorer & Live Demo
+------------------------------------------------------
+A starter-kit / demo asset for the Incedo Data Technology CoE (GCP track).
+
+Run locally:
+    pip install -r requirements.txt
+    streamlit run app.py
+
+Optional live BigQuery demo:
+    Set up Application Default Credentials pointing at a GCP project with
+    BigQuery access, e.g.:
+        gcloud auth application-default login
+        export GOOGLE_CLOUD_PROJECT=your-project-id
+    Without credentials, the app automatically falls back to sample data so
+    it still runs end to end for a demo.
 """
 
+import os
+import numpy as np
+import pandas as pd
 import streamlit as st
-import os, sys
-sys.path.insert(0, os.path.dirname(__file__))
+import plotly.express as px
 
 st.set_page_config(
-    page_title="ETL Automator — by Srinivas Punugu",
-    page_icon="⚡",
+    page_title="GCP Data & AI CoE",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-st.markdown("""
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
-  html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
-  .stApp { background: #0a0f1e; color: #e2e8f0; }
+# ---------------------------------------------------------------------------
+# Static content mirroring the CoE charter / architecture deck
+# ---------------------------------------------------------------------------
 
-  .app-header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
-    border-bottom: 1px solid #6366f133;
-    padding: 20px 32px 16px;
-    margin: -1rem -1rem 1.5rem -1rem;
-  }
-  .app-header .title { font-size: 30px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
-  .app-header .title span { color: #818cf8; }
-  .app-header .subtitle { font-size: 13px; color: #94a3b8; margin-top: 4px; }
-  .app-header .author { font-size: 12px; color: #6366f1; margin-top: 2px; font-weight: 600; }
+LAYERS = [
+    {
+        "name": "1. Data sources",
+        "services": ["Cloud SQL / AlloyDB (OLTP)", "SaaS & on-prem apps", "IoT / Pub/Sub streams", "Cloud Storage (files)", "Third-party / partner APIs"],
+        "purpose": "Capture all enterprise signals, structured and unstructured, batch and streaming.",
+    },
+    {
+        "name": "2. Ingestion",
+        "services": ["Pub/Sub (streaming ingestion)", "Datastream (CDC)", "Cloud Data Fusion (batch ETL)", "Dataflow (unified batch + stream)"],
+        "purpose": "Collect and land data reliably, whether it arrives continuously or on a schedule.",
+    },
+    {
+        "name": "3. Lakehouse storage",
+        "services": ["Cloud Storage (bronze/silver/gold)", "BigLake (open table format)", "Iceberg / Delta / Hudi", "BigQuery native storage"],
+        "purpose": "Medallion architecture: raw, cleaned, and curated zones on open, queryable storage.",
+    },
+    {
+        "name": "4. Processing",
+        "services": ["Dataflow (batch/stream compute)", "Dataproc (Spark/Hadoop)", "BigQuery SQL / BigQuery ML", "Cloud Composer (orchestration)"],
+        "purpose": "Transform, join, and aggregate data into analytics- and ML-ready tables.",
+    },
+    {
+        "name": "5. ML platform",
+        "services": ["Vertex AI Training / AutoML", "Vertex AI Feature Store", "Vertex AI Model Registry & Endpoints", "Vertex AI Pipelines & Model Monitoring"],
+        "purpose": "Build, train, deploy, and monitor ML/AI models at scale, including LLM/RAG workloads.",
+    },
+    {
+        "name": "6. Analytics & BI",
+        "services": ["BigQuery (warehouse)", "Looker / Looker Studio", "Connected Sheets", "BigQuery BI Engine"],
+        "purpose": "Explore, visualize, and operationalize metrics and KPIs for business consumption.",
+    },
+    {
+        "name": "7. Application layer",
+        "services": ["Cloud Run (containerized apps)", "API Gateway", "Streamlit / web apps", "Cloud Functions"],
+        "purpose": "Deliver insights, APIs, and AI capabilities to end users and downstream systems.",
+    },
+]
 
-  .tab-header { border-left: 3px solid #6366f1; padding-left: 16px; margin-bottom: 24px; }
-  .tab-header h2 { margin: 0 0 4px 0; font-size: 22px; color: #f1f5f9; }
-  .tab-header p  { margin: 0; color: #94a3b8; font-size: 14px; }
+CROSS_CUTTING = [
+    ("Security", "Cloud KMS, Secret Manager, encryption at rest & in transit"),
+    ("Identity & access", "Cloud IAM, org policies, fine-grained access control"),
+    ("Compliance & governance", "Dataplex, Data Catalog, audit logs, data lineage"),
+    ("FinOps", "Billing budgets, cost anomaly detection, BigQuery slot reservations"),
+    ("Infra as code", "Terraform, Config Connector, policy as code"),
+    ("Observability", "Cloud Monitoring, Cloud Logging, SLOs/SLIs"),
+]
 
-  .stTabs [data-baseweb="tab-list"] { gap: 4px; background: #0f172a; padding: 8px 8px 0; border-bottom: 1px solid #1e293b; }
-  .stTabs [data-baseweb="tab"] { background: transparent; border: 1px solid #1e293b; border-bottom: none; border-radius: 8px 8px 0 0; color: #94a3b8; font-size: 13px; font-weight: 500; padding: 8px 18px; }
-  .stTabs [aria-selected="true"] { background: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
-  .stTabs [data-baseweb="tab-panel"] { background: #0f172a; border: 1px solid #1e293b; border-top: none; border-radius: 0 8px 8px 8px; padding: 24px; }
-
-  .stButton > button[kind="primary"] { background: linear-gradient(135deg, #6366f1, #4f46e5) !important; border: none !important; color: white !important; font-weight: 600 !important; border-radius: 8px !important; }
-  .stButton > button[kind="primary"]:hover { box-shadow: 0 4px 20px rgba(99,102,241,0.4) !important; }
-  .stButton > button { border-radius: 8px !important; border: 1px solid #334155 !important; background: #1e293b !important; color: #e2e8f0 !important; }
-
-  [data-testid="metric-container"] { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px !important; }
-  [data-testid="stMetricLabel"] { color: #94a3b8 !important; font-size: 12px !important; }
-  [data-testid="stMetricValue"] { color: #f1f5f9 !important; font-size: 24px !important; font-weight: 700 !important; }
-
-  .stTextInput > div > div > input, .stSelectbox > div > div { background: #1e293b !important; border: 1px solid #334155 !important; border-radius: 8px !important; color: #e2e8f0 !important; }
-  .streamlit-expanderHeader { background: #1e293b !important; border-radius: 8px !important; color: #e2e8f0 !important; }
-  code { font-family: 'JetBrains Mono', monospace !important; }
-  [data-testid="stSidebar"] { background: #0f172a !important; border-right: 1px solid #1e293b; }
-  .stDownloadButton > button { background: linear-gradient(135deg, #1d4ed8, #1e40af) !important; border: none !important; color: white !important; font-weight: 600 !important; border-radius: 8px !important; }
-  hr { border-color: #1e293b !important; }
-</style>
-""", unsafe_allow_html=True)
-
-# ── Session State Defaults ─────────────────────────────────────────────────────
-for k, v in {
-    "connected": False, "folders": [], "workflows": [],
-    "selected_folder": None, "selected_workflow": None,
-    "wf_merged_xml": None, "wf_parsed": None, "wf_session_io": {},
-    "curr_sessions": [], "curr_worklets": [], "curr_mappings": [],
-    "curr_sources": [], "curr_targets": [], "curr_lookups": [],
-    "row_count": 0, "complexity": "Low",
-    "generated_sqls": None, "generated_dag": None,
-    "dataset_map": {}, "bq_project": "your-gcp-project",
-    "logic_results": None, "rowcount_results": None,
-    "schema_results": None, "validation_steps": set(),
-    "demo_mode": True,
-}.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
-# ── Sidebar ────────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("""
-    <div style="text-align:center;padding:16px 0 24px;">
-        <div style="font-size:36px;">⚡</div>
-        <div style="font-weight:700;font-size:16px;color:#f1f5f9;">ETL Automator</div>
-        <div style="font-size:11px;color:#6366f1;font-weight:600;">by Srinivas Punugu</div>
-        <div style="font-size:10px;color:#475569;margin-top:2px;">Informatica → BigQuery + Airflow</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── Navigation to other apps ──────────────────────────────────────────────
-    st.markdown("#### 🌐 Navigation")
-    if st.button("🏠 Home / Landing Page", use_container_width=True, key="nav_home"):
-        st.page_link("Home.py", label="Home")
-        st.stop()
-    if st.button("🌐 All Migrations", use_container_width=True, key="nav_all"):
-        st.page_link("pages/All_Migrations.py", label="All Migrations")
-        st.stop()
-
-    st.markdown("---")
-    st.markdown("#### ⚙️ Settings")
-    demo_mode = st.toggle("Demo Mode", value=st.session_state.get("demo_mode", True),
-                          help="Use sample data — no Informatica needed", key="sidebar_demo")
-    st.session_state.demo_mode = demo_mode
-    os.environ["DEMO_MODE"] = "true" if demo_mode else "false"
-    if demo_mode:
-        st.info("🎭 Running with sample data", icon="ℹ️")
-    else:
-        st.warning("⚠️ Real mode: needs Informatica + GCP", icon="⚠️")
-
-    st.markdown("---")
-    st.markdown("#### 📍 Progress")
-    for label, done in [
-        ("1. Repository Export",  bool(st.session_state.get("wf_merged_xml"))),
-        ("2. Lineage Analyzed",   bool(st.session_state.get("curr_sessions"))),
-        ("3. Schema Mapped",      bool(st.session_state.get("dataset_map"))),
-        ("4. SQL + DAG Built",    bool(st.session_state.get("generated_sqls"))),
-        ("5. Validation Done",    len(st.session_state.get("validation_steps", set())) >= 3),
-    ]:
-        st.markdown(f"{'✅' if done else '⬜'} {label}")
-
-    if st.session_state.get("selected_workflow"):
-        st.markdown("---")
-        st.markdown("#### 📋 Active Workflow")
-        st.code(st.session_state.selected_workflow, language=None)
-        badge = st.session_state.get("complexity", "Low")
-        st.markdown(f"Complexity: {'🟢' if badge=='Low' else '🟡' if badge=='Medium' else '🟠' if badge=='High' else '🔴'} **{badge}**")
-        rc = st.session_state.get("row_count", 0)
-        if rc:
-            st.markdown(f"Last Run: `{rc:,}` rows")
-
-    st.markdown("---")
-    if st.button("🔄 Reset All", use_container_width=True, key="reset_all"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-
-    st.markdown("""
-    <div style="text-align:center;padding-top:24px;color:#475569;font-size:11px;">
-        ETL Automator v1.0<br>
-        Built by <strong style="color:#6366f1;">Srinivas Punugu</strong>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ── Header ─────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="app-header">
-    <div class="title">⚡ ETL <span>Automator</span></div>
-    <div class="subtitle">Informatica PowerCenter → Google BigQuery + Apache Airflow</div>
-    <div class="author">Built by Srinivas Punugu</div>
-</div>
-""", unsafe_allow_html=True)
-
-# ── Tabs ───────────────────────────────────────────────────────────────────────
-from pages import (
-    tab0_config, tab1_repository, tab2_lineage, tab3_schema,
-    tab4_converter, tab5_validation, tab6_ai_assistant, tab7_cicd
-)
-
-t0, t1, t2, t3, t4, t5, t6, t7 = st.tabs([
-    "⚙️ 0. Configuration",
-    "🗂️ 1. Repository Explorer",
-    "🔗 2. Lineage Analysis",
-    "🧬 3. Schema Analyzer",
-    "⚡ 4. SQL Converter",
-    "✅ 5. Validation",
-    "🤖 6. AI Assistant",
-    "🚀 7. CI/CD Pipeline",
+JULY_DELIVERABLES = pd.DataFrame([
+    {"Deliverable": "Finalize charter and governance", "Outcome": "Operating model established", "Status": "Done"},
+    {"Deliverable": "Publish initial technology archetypes", "Outcome": "Standard solution patterns", "Status": "Done"},
+    {"Deliverable": "Catalogue reusable IP", "Outcome": "Shared technology assets", "Status": "In progress"},
+    {"Deliverable": "Launch certification roadmap", "Outcome": "Capability development begins", "Status": "Done"},
+    {"Deliverable": "Establish Architecture Review Board", "Outcome": "Technical governance in place", "Status": "Done"},
+    {"Deliverable": "Support strategic pursuits", "Outcome": "Immediate business impact", "Status": "In progress"},
 ])
 
-with t0: tab0_config.render()
-with t1: tab1_repository.render()
-with t2: tab2_lineage.render()
-with t3: tab3_schema.render()
-with t4: tab4_converter.render()
-with t5: tab5_validation.render()
-with t6: tab6_ai_assistant.render()
-with t7: tab7_cicd.render()
+ASSET_CATALOG = pd.DataFrame([
+    {"Asset": "GCP end-to-end reference architecture", "Type": "Architecture diagram", "Layer": "All", "Status": "Published"},
+    {"Asset": "BigQuery lakehouse starter kit", "Type": "Terraform template", "Layer": "Storage", "Status": "Planned (Aug)"},
+    {"Asset": "Dataflow streaming pipeline template", "Type": "Code accelerator", "Layer": "Ingestion", "Status": "Planned (Aug)"},
+    {"Asset": "Vertex AI RAG starter", "Type": "Code accelerator", "Layer": "ML platform", "Status": "Planned (Sep)"},
+    {"Asset": "Streamlit CoE demo app", "Type": "Demo asset", "Layer": "Application", "Status": "This app"},
+])
+
+# ---------------------------------------------------------------------------
+# Sidebar navigation
+# ---------------------------------------------------------------------------
+
+st.sidebar.title("GCP Data & AI CoE")
+page = st.sidebar.radio(
+    "Navigate",
+    ["Overview", "Architecture layers", "Live demo", "Reusable asset catalog"],
+)
+st.sidebar.markdown("---")
+st.sidebar.caption("Incedo Data Technology CoE \u2014 GCP track")
+
+# ---------------------------------------------------------------------------
+# Overview page
+# ---------------------------------------------------------------------------
+
+if page == "Overview":
+    st.title("GCP Data & AI Center of Excellence")
+    st.markdown(
+        "Establishing GCP as one of Incedo's Data Technology CoEs: reference "
+        "architectures, reusable IP, and hands-on demos for modern data and "
+        "AI platforms."
+    )
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Architecture layers", len(LAYERS))
+    col2.metric("Cross-cutting capabilities", len(CROSS_CUTTING))
+    col3.metric("July deliverables done", f"{(JULY_DELIVERABLES['Status'] == 'Done').sum()}/{len(JULY_DELIVERABLES)}")
+
+    st.subheader("July deliverables")
+    st.dataframe(JULY_DELIVERABLES, use_container_width=True, hide_index=True)
+
+    st.subheader("Cross-cutting capabilities")
+    cc_cols = st.columns(3)
+    for i, (name, desc) in enumerate(CROSS_CUTTING):
+        with cc_cols[i % 3]:
+            st.markdown(f"**{name}**")
+            st.caption(desc)
+
+# ---------------------------------------------------------------------------
+# Architecture layers page
+# ---------------------------------------------------------------------------
+
+elif page == "Architecture layers":
+    st.title("GCP end-to-end architecture")
+    st.markdown("Click into each layer to see the GCP services mapped to it.")
+
+    for layer in LAYERS:
+        with st.expander(layer["name"], expanded=False):
+            st.write(layer["purpose"])
+            st.markdown("**GCP services:**")
+            for svc in layer["services"]:
+                st.markdown(f"- {svc}")
+
+# ---------------------------------------------------------------------------
+# Live demo page
+# ---------------------------------------------------------------------------
+
+elif page == "Live demo":
+    st.title("Live demo: ingestion \u2192 storage \u2192 analytics")
+    st.markdown(
+        "This panel queries a public BigQuery dataset to show the "
+        "storage-to-analytics slice of the architecture working end to end. "
+        "If no GCP credentials are configured in this environment, it falls "
+        "back to representative sample data so the demo still runs."
+    )
+
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
+    project_input = st.text_input(
+        "GCP project ID (for BigQuery billing)", value=project_id,
+        help="Required to run the live BigQuery query. Leave blank to use sample data.",
+    )
+
+    query = """
+        SELECT
+          station_id,
+          COUNT(*) AS trip_count
+        FROM `bigquery-public-data.austin_bikeshare.bikeshare_trips`
+        WHERE start_time BETWEEN '2019-01-01' AND '2019-01-31'
+        GROUP BY station_id
+        ORDER BY trip_count DESC
+        LIMIT 10
+    """
+    st.code(query.strip(), language="sql")
+
+    use_live = st.button("Run live BigQuery query")
+
+    df = None
+    if use_live:
+        if not project_input:
+            st.warning("Enter a GCP project ID to run a live query, or view the sample data below.")
+        else:
+            try:
+                from google.cloud import bigquery
+                client = bigquery.Client(project=project_input)
+                df = client.query(query).to_dataframe()
+                st.success("Live results from BigQuery.")
+            except Exception as e:
+                st.error(f"Could not reach BigQuery ({e}). Showing sample data instead.")
+
+    if df is None:
+        rng = np.random.default_rng(42)
+        df = pd.DataFrame({
+            "station_id": [f"STN-{i:03d}" for i in range(1, 11)],
+            "trip_count": sorted(rng.integers(200, 2000, size=10), reverse=True),
+        })
+        st.caption("Sample data shown (no live BigQuery connection).")
+
+    fig = px.bar(df, x="station_id", y="trip_count", title="Top stations by trip count")
+    st.plotly_chart(fig, use_container_width=True)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+# ---------------------------------------------------------------------------
+# Reusable asset catalog page
+# ---------------------------------------------------------------------------
+
+elif page == "Reusable asset catalog":
+    st.title("Reusable asset catalog")
+    st.markdown("Tracks accelerators, templates, and demo assets produced by the CoE.")
+    st.dataframe(ASSET_CATALOG, use_container_width=True, hide_index=True)
+
+    st.subheader("Add a new asset")
+    with st.form("add_asset"):
+        name = st.text_input("Asset name")
+        atype = st.selectbox("Type", ["Architecture diagram", "Terraform template", "Code accelerator", "Demo asset", "Documentation"])
+        layer = st.selectbox("Layer", [l["name"] for l in LAYERS] + ["All"])
+        status = st.selectbox("Status", ["Planned", "In progress", "Published"])
+        submitted = st.form_submit_button("Add to catalog (session only)")
+        if submitted and name:
+            st.session_state.setdefault("extra_assets", []).append(
+                {"Asset": name, "Type": atype, "Layer": layer, "Status": status}
+            )
+            st.success(f"Added '{name}' for this session.")
+
+    if st.session_state.get("extra_assets"):
+        st.dataframe(pd.DataFrame(st.session_state["extra_assets"]), use_container_width=True, hide_index=True)
